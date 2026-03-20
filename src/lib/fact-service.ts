@@ -1,5 +1,5 @@
 import { prisma } from "./db";
-import { generateMovieFact } from "./gemini";
+import { generateMovieFact } from "./claude";
 
 const CACHE_WINDOW_MS = 60_000; // 60 seconds
 const STALE_LOCK_MS = 30_000; // 30 seconds

@@ -21,7 +21,7 @@ vi.mock("@/lib/db", () => ({
 }));
 
 const mockGenerateMovieFact = vi.fn();
-vi.mock("@/lib/gemini", () => ({
+vi.mock("@/lib/claude", () => ({
   generateMovieFact: (...args: unknown[]) => mockGenerateMovieFact(...args),
 }));
 

@@ -1,6 +1,6 @@
 # Movie Memory
 
-A full-stack web application where users sign in with Google, share their favorite movie, and discover fun facts about it powered by Gemini.
+A full-stack web application where users sign in with Google, share their favorite movie, and discover fun facts about it powered by Claude.
 
 ## Tech Stack
 
@@ -9,12 +9,12 @@ A full-stack web application where users sign in with Google, share their favori
 - **Database:** PostgreSQL (via Docker Compose)
 - **ORM:** Prisma 7
 - **Authentication:** NextAuth.js with Google OAuth
-- **AI:** Google Gemini API (gemini-2.0-flash)
+- **AI:** Anthropic Claude API (claude-sonnet-4-20250514)
 - **Testing:** Vitest
 
 ## Variant Choice: A — Backend-Focused (Caching & Correctness)
 
-I chose Variant A because backend correctness is foundational to a reliable application. The caching and idempotency requirements address real production concerns — race conditions from concurrent requests and unnecessary API costs from redundant Gemini calls. These problems compound in production and are harder to retrofit than frontend state management.
+I chose Variant A because backend correctness is foundational to a reliable application. The caching and idempotency requirements address real production concerns — race conditions from concurrent requests and unnecessary API costs from redundant Claude calls. These problems compound in production and are harder to retrofit than frontend state management.
 
 ## Architecture Overview
 
@@ -41,8 +41,8 @@ The core logic lives in `src/lib/fact-service.ts`:
 
 1. **Cache check:** Query the most recent `MovieFact` for the user+movie pair. If it's less than 60 seconds old, return it immediately.
 2. **Burst protection:** Use `prisma.user.updateMany` with a WHERE clause that only succeeds if `generatingFact` is false (or the lock is stale >30s). This is an atomic operation — only one concurrent request can acquire the lock.
-3. **Generation:** Call Gemini to generate a new fact, store it, and return it.
-4. **Failure handling:** If Gemini fails, return the most recent cached fact (any age). If no cache exists, return a user-friendly error.
+3. **Generation:** Call Claude to generate a new fact, store it, and return it.
+4. **Failure handling:** If Claude fails, return the most recent cached fact (any age). If no cache exists, return a user-friendly error.
 5. **Lock cleanup:** Always release the `generatingFact` flag in a `finally` block.
 
 ### Project Structure
@@ -60,7 +60,7 @@ src/
   lib/
     auth.ts                     # NextAuth configuration
     db.ts                       # Prisma client singleton
-    gemini.ts                   # Gemini API wrapper
+    claude.ts                   # Claude API wrapper
     fact-service.ts             # Cache + burst protection logic
     validation.ts               # Movie input validation
   components/
@@ -79,7 +79,7 @@ src/
 - Node.js 18+
 - Docker & Docker Compose
 - Google Cloud Console project with OAuth 2.0 credentials
-- Gemini API key
+- Anthropic API key
 
 ### Google OAuth Setup
 
@@ -100,7 +100,7 @@ Copy `.env.example` to `.env` and fill in the values:
 | `NEXTAUTH_SECRET` | Random secret for session encryption (`openssl rand -base64 32`) |
 | `GOOGLE_CLIENT_ID` | Google OAuth Client ID |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth Client Secret |
-| `GEMINI_API_KEY` | Gemini API key from Google AI Studio |
+| `ANTHROPIC_API_KEY` | Anthropic API key from console.anthropic.com |
 
 ### Running Locally
 
@@ -132,10 +132,14 @@ npm test
 
 ## Key Tradeoffs
 
-- **Gemini Flash over Pro:** Significantly faster and cheaper for generating short fun facts. Quality is more than sufficient for this use case.
+- **Claude Sonnet over Opus:** Significantly faster and cheaper for generating short fun facts. Quality is more than sufficient for this use case.
 - **DB-level burst protection over Redis:** Using a Prisma `updateMany` with a conditional WHERE clause instead of a Redis lock. This avoids adding another infrastructure dependency while still providing atomic lock acquisition. The tradeoff is that in a multi-server deployment, a stale lock requires a 30-second timeout before another server can claim it.
-- **In-process lock timeout (30s):** If a generation process crashes without releasing the lock, other requests must wait 30 seconds. This is pragmatic — the Gemini call typically completes in 2-5 seconds, and 30 seconds is long enough to avoid false positives.
+- **In-process lock timeout (30s):** If a generation process crashes without releasing the lock, other requests must wait 30 seconds. This is pragmatic — the Claude call typically completes in 2-5 seconds, and 30 seconds is long enough to avoid false positives.
 - **NextAuth v4 over v5:** v4 is stable and well-documented with the Prisma adapter. v5 is still evolving and would add migration risk for no clear benefit here.
+
+## Known Limitations
+
+- **Regional/non-English movies:** Claude's training data is primarily English-language, so it may not recognize lesser-known regional films (e.g., Bollywood B-movies, regional Indian cinema, niche foreign films). In those cases, it will politely say it doesn't recognize the movie. A future improvement would be to validate movie names against TMDB before generating facts.
 
 ## What I Would Improve with 2 More Hours
 

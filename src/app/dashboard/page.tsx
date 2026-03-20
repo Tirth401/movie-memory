@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import UserAvatar from "@/components/UserAvatar";
 import SignOutButton from "@/components/SignOutButton";
+import FactDisplay from "@/components/FactDisplay";
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
@@ -46,6 +47,8 @@ export default async function DashboardPage() {
               {user.favoriteMovie}
             </p>
           </div>
+
+          <FactDisplay />
         </div>
       </div>
     </main>

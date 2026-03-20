@@ -33,9 +33,6 @@ yarn-error.log*
 .env.local
 .env.production
 
-# interview prep (local only)
-INTERVIEW_PREP.md
-
 # vercel
 .vercel
 
